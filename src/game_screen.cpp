@@ -12,6 +12,15 @@
 #include "title_screen.hpp"
 #include "snake.hpp"
 
+inline std::string get_formatted_time(unsigned int ticks)
+{
+    unsigned int hours = ticks / 60;
+    unsigned int seconds = ticks % 60;
+    std::string hours_str = hours < 10 ? "0" + std::to_string(hours) : std::to_string(hours);
+    std::string seconds_str = seconds < 10 ? "0" + std::to_string(seconds) : std::to_string(seconds);
+    return hours_str + ":" + seconds_str;
+}
+
 GameScreen::GameScreen(sf::RenderWindow& window):
     GameState(window),
     grid(0),
@@ -29,10 +38,6 @@ GameScreen::GameScreen(sf::RenderWindow& window):
             grid[i][j] = std::make_shared<Node>();
             grid[i][j]->x = i;
             grid[i][j]->y = j;
-
-            if (i == 0 || i == grid_width - 1 || j == 0 || j == grid_height - 1) {
-                grid[i][j]->isWall = true;
-            }
         }
     }
 
@@ -51,6 +56,20 @@ GameScreen::GameScreen(sf::RenderWindow& window):
             }
             if (j < grid_height - 1) {
                 node->neighbours.push_back(grid[i][j + 1]);
+            }
+
+            // loop around the edges
+            if (i == 0) {
+                node->neighbours.push_back(grid[grid_width - 1][j]);
+            }
+            if (i == grid_width - 1) {
+                node->neighbours.push_back(grid[0][j]);
+            }
+            if (j == 0) {
+                node->neighbours.push_back(grid[i][grid_height - 1]);
+            }
+            if (j == grid_height - 1) {
+                node->neighbours.push_back(grid[i][0]);
             }
         }
     }
@@ -90,7 +109,7 @@ void GameScreen::Draw() {
                 rect.setFillColor(sf::Color(50, 50, 50, 255));
             }
             else if (node == end) {
-                rect.setFillColor(sf::Color::Red);
+                rect.setFillColor(sf::Color(187, 134, 252));
             }
             else if (node->isPath) {
                 rect.setFillColor(sf::Color(235, 52, 116, 50));
@@ -106,26 +125,67 @@ void GameScreen::Draw() {
 std::shared_ptr<GameState> GameScreen::Run() {
 
     sf::Clock clock;
+    unsigned int in_game_time = 0;
+    unsigned int shortest_distance = 0;
+    unsigned int current_steps = 0;
+
     while (window.isOpen()) {
         auto event = sf::Event{};
-
         sf::Time elapsed = clock.getElapsedTime();
         if (elapsed.asSeconds() > 0.25f) {
+            current_steps++;
+
             const unsigned int grid_width = window.getSize().x / grid_size;
             const unsigned int grid_height = window.getSize().y / grid_size;
 
-            auto reset_food = [&]() {food->x = std::rand() % grid_width; food->y = std::rand() % grid_height;};
-
-            snake.Update(reset_food);
-            //clear the path
-            for (size_t i = 0; i < grid.size(); ++i) {
-                for (size_t j = 0; j < grid[i].size(); ++j) {
-                    grid[i][j]->Reset();
+            auto reset_food = [&]() {
+                food->x = std::rand() % grid_width;
+                food->y = std::rand() % grid_height;
+                current_steps = 0;
+                // reset the grid for a-star
+                for (size_t i = 0; i < grid.size(); ++i) {
+                    for (size_t j = 0; j < grid[i].size(); ++j) {
+                        grid[i][j]->Reset();
+                    }
                 }
-            }
-            SolveAStar(grid[snake.body.back().x][snake.body.back().y], grid[food->x][food->y]);
+                SolveAStar(grid[snake.body.front().x][snake.body.front().y], grid[food->x][food->y]);
+
+                // calculate the shortest distance
+                shortest_distance = 0;
+                for (size_t i = 0; i < grid.size(); ++i) {
+                    for (size_t j = 0; j < grid[i].size(); ++j) {
+                        if (grid[i][j]->isPath) {
+                            shortest_distance++;
+                        }
+                    }
+                }
+            };
+            snake.Update(reset_food);
             clock.restart();
+            in_game_time++;
         }
+
+        sf::Font font;
+        font.loadFromFile("assets/fonts/Sharp Retro/Sharp Retro.ttf");
+
+        sf::Text in_game_clock;
+        in_game_clock.setFont(font);
+        std::string time = get_formatted_time(in_game_time);
+        in_game_clock.setString(time);
+        in_game_clock.setCharacterSize(32);
+        in_game_clock.setPosition(8, 8);
+
+        sf::Text shortest_distance_text;
+        shortest_distance_text.setFont(font);
+        shortest_distance_text.setString("Shortest distance: " + std::to_string(shortest_distance));
+        shortest_distance_text.setCharacterSize(32);
+        shortest_distance_text.setPosition(window.getSize().x - 400, 8);
+
+        sf::Text current_steps_text;
+        current_steps_text.setFont(font);
+        current_steps_text.setString("Current steps: " + std::to_string(current_steps));
+        current_steps_text.setCharacterSize(32);
+        current_steps_text.setPosition(window.getSize().x - 400, 48);
 
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
@@ -151,6 +211,9 @@ std::shared_ptr<GameState> GameScreen::Run() {
         }
         window.clear();
         Draw();
+        window.draw(in_game_clock);
+        window.draw(shortest_distance_text);
+        window.draw(current_steps_text);
         window.display();
     }
 
@@ -158,8 +221,10 @@ std::shared_ptr<GameState> GameScreen::Run() {
 }
 
 void GameScreen::SolveAStar(std::shared_ptr<Node> start, std::shared_ptr<Node> end) {
-    auto distance = [](std::shared_ptr<Node> a, std::shared_ptr<Node> b) {
-        return std::sqrtf(std::pow(a->x - b->x, 2) + std::pow(a->y - b->y, 2));
+    auto distance = [&](std::shared_ptr<Node> a, std::shared_ptr<Node> b) {
+        //return std::abs(static_cast<int>(a->x) - static_cast<int>(b->x)) + std::abs(static_cast<int>(a->y) - static_cast<int>(b->y));
+        // manhattan distance with modulus
+        return std::abs(static_cast<int>(a->x) - static_cast<int>(b->x)) % grid_size + std::abs(static_cast<int>(a->y) - static_cast<int>(b->y)) % grid_size;
     };
 
     auto heuristic = [distance](std::shared_ptr<Node> a, std::shared_ptr<Node> b) {

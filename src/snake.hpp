@@ -14,6 +14,8 @@ struct Snake
     void Update(std::function <void()> callback);
     void Draw(sf::RenderWindow& window);
 
+    size_t grid_width, grid_height;
+
     std::shared_ptr<sf::Vector2i> food;
     std::vector<sf::Vector2i> body;
     sf::Vector2i velocity = sf::Vector2i{ 0, 0 };
