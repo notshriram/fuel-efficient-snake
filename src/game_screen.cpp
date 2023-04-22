@@ -71,7 +71,7 @@ void GameScreen::Draw() {
     const unsigned int grid_width = window.getSize().x / grid_size;
     const unsigned int grid_height = window.getSize().y / grid_size;
 
-    std::shared_ptr<Node> start = grid[5][10];
+    std::shared_ptr<Node> start = grid[snake.body.front().x][snake.body.front().y];
     std::shared_ptr<Node> end = grid[12][10];
 
     for (size_t i = 0; i < grid_width; ++i) {
@@ -80,15 +80,24 @@ void GameScreen::Draw() {
             auto rect = sf::RectangleShape(sf::Vector2f(grid_size, grid_size));
             rect.setPosition(node->x * grid_size, node->y * grid_size);
 
-            bool isSnake = false;
-            for (auto& segment : snake.body) {
-                if (segment.x == node->x && segment.y == node->y) {
-                    isSnake = true;
+            int indexInSnake = -1;
+            for (size_t k = 0; k < snake.body.size(); ++k) {
+                if (snake.body[k].x == node->x && snake.body[k].y == node->y) {
+                    indexInSnake = k;
                     break;
                 }
             }
-            if (isSnake) {
-                rect.setFillColor(sf::Color::Magenta);
+            if (indexInSnake != -1) {
+
+                float shade = 1.0f - (static_cast<float>(indexInSnake) / static_cast<float>(snake.body.size() - 1));
+
+                rect.setFillColor(
+                    sf::Color(
+                        static_cast<sf::Uint8>(255 * shade),
+                        static_cast<sf::Uint8>(255 * shade),
+                        static_cast<sf::Uint8>(255 * shade)
+                    )
+                );
             }
             else if (node->isWall) {
                 rect.setFillColor(sf::Color::Black);
@@ -102,14 +111,9 @@ void GameScreen::Draw() {
             else if (node->isPath) {
                 rect.setFillColor(sf::Color::Yellow);
             }
-            else if (node->isVisited) {
-                rect.setFillColor(sf::Color::Blue);
-            }
             else {
                 rect.setFillColor(sf::Color::White);
             }
-            rect.setOutlineColor(sf::Color::Black);
-            rect.setOutlineThickness(1.0f);
             window.draw(rect);
         }
     }
@@ -124,6 +128,13 @@ std::shared_ptr<GameState> GameScreen::Run() {
         sf::Time elapsed = clock.getElapsedTime();
         if (elapsed.asSeconds() > 1.f) {
             snake.Update();
+            //clear the path
+            for (size_t i = 0; i < grid.size(); ++i) {
+                for (size_t j = 0; j < grid[i].size(); ++j) {
+                    grid[i][j]->Reset();
+                }
+            }
+            SolveAStar(grid[snake.body.back().x][snake.body.back().y], grid[12][10]);
             clock.restart();
         }
 

@@ -2,6 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <memory>
+#include <vector>
 #include "node.hpp"
 
 
@@ -14,9 +15,5 @@ struct Snake
     void Draw(sf::RenderWindow& window);
 
     std::vector<sf::Vector2i> body;
-    sf::Vector2i position;
     sf::Vector2i velocity;
-
-    sf::Vector2i head;
-    sf::Vector2i tail;
 };
