@@ -1,6 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include "title_screen.hpp"
-#include "game_screen.hpp"
+#include "intro_screen.hpp"
 #include <iostream>
 
 TitleScreen::TitleScreen(sf::RenderWindow& window): GameState(window) {}
@@ -8,7 +8,7 @@ TitleScreen::TitleScreen(sf::RenderWindow& window): GameState(window) {}
 std::shared_ptr<GameState> TitleScreen::Run() {
 
     sf::Font font;
-    if (!font.loadFromFile("fonts/DotGothic16/DotGothic16-Regular.ttf"))
+    if (!font.loadFromFile("assets/fonts/Sharp Retro/Sharp Retro.ttf"))
     {
         std::cerr << "Error loading font" << std::endl;
     }
@@ -28,7 +28,7 @@ std::shared_ptr<GameState> TitleScreen::Run() {
             if (event.type == sf::Event::KeyPressed) {
                 if (event.key.code == sf::Keyboard::Space || event.key.code == sf::Keyboard::Return) {
                     if (selectedOption == 0) {
-                        return std::make_shared<GameScreen>(window);
+                        return std::make_shared<IntroScreen>(window);
                     }
                     if (selectedOption == 2) {
                         window.close();

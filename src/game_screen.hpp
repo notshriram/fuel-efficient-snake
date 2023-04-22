@@ -8,11 +8,12 @@
 
 class GameScreen: public GameState {
 private:
-    void Init();
     void Draw();
+    const int grid_size = 30;
     std::vector<std::vector<std::shared_ptr<Node>>> grid;
     void SolveAStar(std::shared_ptr<Node> start, std::shared_ptr<Node> end);
     Snake snake;
+    std::shared_ptr<sf::Vector2i> food;
 
 public:
     GameScreen(sf::RenderWindow& window);

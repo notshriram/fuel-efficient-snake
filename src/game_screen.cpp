@@ -2,9 +2,10 @@
 #include <vector>
 #include <list>
 #include <numeric>
-#include <cstdlib>
+#include <cstdlib> // for rand
 #include <cmath>
 #include <algorithm>
+#include <memory>
 
 #include "node.hpp"
 #include "game_screen.hpp"
@@ -14,16 +15,12 @@
 GameScreen::GameScreen(sf::RenderWindow& window):
     GameState(window),
     grid(0),
-    snake(Snake(sf::Vector2i{}, sf::Vector2i{})) {
-    Init();
-}
-
-void GameScreen::Init()
-{
+    snake(Snake(0, 0, nullptr)) {
     // initialize the game grid
-    const unsigned int grid_size = 40; // pixels
     const unsigned int grid_width = window.getSize().x / grid_size;
     const unsigned int grid_height = window.getSize().y / grid_size;
+
+    food = std::make_shared<sf::Vector2i>(std::rand() % grid_width, std::rand() % grid_height);
 
     this->grid = std::vector<std::vector<std::shared_ptr<Node>>>(grid_width, std::vector<std::shared_ptr<Node>>(grid_height));
 
@@ -58,21 +55,20 @@ void GameScreen::Init()
         }
     }
 
-    std::shared_ptr<Node> start = grid[5][10];
-    std::shared_ptr<Node> end = grid[12][10];
+    this->snake = Snake(grid_width, grid_height, food);
 
-    this->snake = Snake(sf::Vector2i{5, 10}, sf::Vector2i{6, 10});
+    std::shared_ptr<Node> start = grid[snake.body.front().x][snake.body.front().y];
+    std::shared_ptr<Node> end = grid[food->x][food->y];
+
     SolveAStar(start, end);
-
 }
 
 void GameScreen::Draw() {
-    const unsigned int grid_size = 40; // pixels
     const unsigned int grid_width = window.getSize().x / grid_size;
     const unsigned int grid_height = window.getSize().y / grid_size;
 
     std::shared_ptr<Node> start = grid[snake.body.front().x][snake.body.front().y];
-    std::shared_ptr<Node> end = grid[12][10];
+    std::shared_ptr<Node> end = grid[food->x][food->y];
 
     for (size_t i = 0; i < grid_width; ++i) {
         for (size_t j = 0; j < grid_height; ++j) {
@@ -88,31 +84,19 @@ void GameScreen::Draw() {
                 }
             }
             if (indexInSnake != -1) {
-
-                float shade = 1.0f - (static_cast<float>(indexInSnake) / static_cast<float>(snake.body.size() - 1));
-
-                rect.setFillColor(
-                    sf::Color(
-                        static_cast<sf::Uint8>(255 * shade),
-                        static_cast<sf::Uint8>(255 * shade),
-                        static_cast<sf::Uint8>(255 * shade)
-                    )
-                );
+                rect.setFillColor(sf::Color(235, 52, 116, 255));
             }
             else if (node->isWall) {
-                rect.setFillColor(sf::Color::Black);
-            }
-            else if (node == start) {
-                rect.setFillColor(sf::Color::Green);
+                rect.setFillColor(sf::Color(50, 50, 50, 255));
             }
             else if (node == end) {
                 rect.setFillColor(sf::Color::Red);
             }
             else if (node->isPath) {
-                rect.setFillColor(sf::Color::Yellow);
+                rect.setFillColor(sf::Color(235, 52, 116, 50));
             }
             else {
-                rect.setFillColor(sf::Color::White);
+                rect.setFillColor(sf::Color::Black);
             }
             window.draw(rect);
         }
@@ -126,15 +110,20 @@ std::shared_ptr<GameState> GameScreen::Run() {
         auto event = sf::Event{};
 
         sf::Time elapsed = clock.getElapsedTime();
-        if (elapsed.asSeconds() > 1.f) {
-            snake.Update();
+        if (elapsed.asSeconds() > 0.25f) {
+            const unsigned int grid_width = window.getSize().x / grid_size;
+            const unsigned int grid_height = window.getSize().y / grid_size;
+
+            auto reset_food = [&]() {food->x = std::rand() % grid_width; food->y = std::rand() % grid_height;};
+
+            snake.Update(reset_food);
             //clear the path
             for (size_t i = 0; i < grid.size(); ++i) {
                 for (size_t j = 0; j < grid[i].size(); ++j) {
                     grid[i][j]->Reset();
                 }
             }
-            SolveAStar(grid[snake.body.back().x][snake.body.back().y], grid[12][10]);
+            SolveAStar(grid[snake.body.back().x][snake.body.back().y], grid[food->x][food->y]);
             clock.restart();
         }
 
