@@ -11,7 +11,7 @@ struct Snake
     Snake(size_t grid_width, size_t grid_height, std::shared_ptr<sf::Vector2i> food);
     ~Snake() = default;
 
-    void Update(std::function <void()> callback);
+    void Update(std::function <void()> callback, bool& is_game_over);
     void Draw(sf::RenderWindow& window);
 
     size_t grid_width, grid_height;

@@ -13,7 +13,12 @@ Snake::Snake(size_t grid_width, size_t grid_height, std::shared_ptr<sf::Vector2i
     body.push_back(head);
 }
 
-void Snake::Update(std::function <void()> callback) {
+void Snake::Update(std::function <void()> callback, bool& is_game_over) {
+
+    if (velocity.x == 0 && velocity.y == 0) {
+        return;
+    }
+
     // update the position
     auto head = body.back();
 
@@ -30,6 +35,21 @@ void Snake::Update(std::function <void()> callback) {
         head.y = 0;
     }
     else {
+        // check if going backwards
+        if (body.size() > 1) {
+            auto neck = body.end() - 2;
+            if (head.x + velocity.x == neck->x && head.y + velocity.y == neck->y) {
+                velocity = sf::Vector2i{ 0, 0 };
+                return;
+            }
+        }
+        // check if the snake hit itself
+        for (auto it = body.begin(); it != body.end() - 1; ++it) {
+            if (head.x + velocity.x == it->x && head.y + velocity.y == it->y) {
+                is_game_over = true;
+                return;
+            }
+        }
         head += velocity;
     }
 

@@ -6,11 +6,13 @@
 #include <cmath>
 #include <algorithm>
 #include <memory>
+#include <SFML/Audio.hpp>
 
 #include "node.hpp"
 #include "game_screen.hpp"
 #include "title_screen.hpp"
 #include "snake.hpp"
+#include "game_over.hpp"
 
 inline std::string get_formatted_time(unsigned int ticks)
 {
@@ -80,6 +82,15 @@ GameScreen::GameScreen(sf::RenderWindow& window):
     std::shared_ptr<Node> end = grid[food->x][food->y];
 
     SolveAStar(start, end);
+
+    shortest_distance = 0;
+    for (size_t i = 0; i < grid.size(); ++i) {
+        for (size_t j = 0; j < grid[i].size(); ++j) {
+            if (grid[i][j]->isPath) {
+                shortest_distance++;
+            }
+        }
+    }
 }
 
 void GameScreen::Draw() {
@@ -126,8 +137,18 @@ std::shared_ptr<GameState> GameScreen::Run() {
 
     sf::Clock clock;
     unsigned int in_game_time = 0;
-    unsigned int shortest_distance = 0;
     unsigned int current_steps = 0;
+    int score = 0;
+
+    //count
+
+    // load audio file from assets
+    sf::SoundBuffer buffer;
+    buffer.loadFromFile("assets/audio/shady.mp3");
+    sf::Sound sound;
+    sound.setBuffer(buffer);
+    sound.setLoop(true);
+    sound.play();
 
     while (window.isOpen()) {
         auto event = sf::Event{};
@@ -141,6 +162,7 @@ std::shared_ptr<GameState> GameScreen::Run() {
             auto reset_food = [&]() {
                 food->x = std::rand() % grid_width;
                 food->y = std::rand() % grid_height;
+                score += (shortest_distance - current_steps);
                 current_steps = 0;
                 // reset the grid for a-star
                 for (size_t i = 0; i < grid.size(); ++i) {
@@ -160,9 +182,20 @@ std::shared_ptr<GameState> GameScreen::Run() {
                     }
                 }
             };
-            snake.Update(reset_food);
+
+            bool game_over = false;
+            snake.Update(reset_food, game_over);
+
             clock.restart();
-            in_game_time++;
+
+            if (++in_game_time >= 12 * 60) {
+                game_over = true;
+            }
+
+            if (game_over) {
+                sound.stop();
+                return std::make_shared<GameOver>(window, score, in_game_time);
+            }
         }
 
         sf::Font font;
@@ -187,12 +220,34 @@ std::shared_ptr<GameState> GameScreen::Run() {
         current_steps_text.setCharacterSize(32);
         current_steps_text.setPosition(window.getSize().x - 400, 48);
 
+        sf::Text score_text;
+        score_text.setFont(font);
+        score_text.setString("Score: " + std::to_string(score));
+        score_text.setCharacterSize(32);
+        score_text.setPosition(window.getSize().x - 400, window.getSize().y - 88);
+
+        sf::Text alert_score_delta;
+        alert_score_delta.setFont(font);
+        int delta = static_cast<int>(shortest_distance) - static_cast<int>(current_steps);
+        std::string delta_string = std::to_string(delta);
+        if (delta > 0) {
+            alert_score_delta.setFillColor(sf::Color::Green);
+            delta_string = "+" + delta_string;
+        }
+        else {
+            alert_score_delta.setFillColor(sf::Color::Red);
+        }
+        alert_score_delta.setString(delta_string);
+        alert_score_delta.setCharacterSize(32);
+        // set at bottom right
+        alert_score_delta.setPosition(window.getSize().x - 400, window.getSize().y - 48);
+
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
                 window.close();
             }
             if (event.type == sf::Event::KeyPressed) {
-                if (event.key.code == sf::Keyboard::Space) {
+                if (event.key.code == sf::Keyboard::Escape) {
                     return std::make_shared<TitleScreen>(window);
                 }
                 if (event.key.code == sf::Keyboard::Up) {
@@ -214,9 +269,12 @@ std::shared_ptr<GameState> GameScreen::Run() {
         window.draw(in_game_clock);
         window.draw(shortest_distance_text);
         window.draw(current_steps_text);
+        window.draw(score_text);
+        window.draw(alert_score_delta);
         window.display();
     }
 
+    sound.stop();
     return nullptr;
 }
 

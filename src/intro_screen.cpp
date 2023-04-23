@@ -3,6 +3,7 @@
 #include <memory>
 #include <fstream>
 #include <algorithm>
+#include <SFML/Audio.hpp>
 
 IntroScreen::IntroScreen(sf::RenderWindow& window): GameState(window) {
 
@@ -36,6 +37,14 @@ std::vector<sf::Text> readFromFile(std::string filename, int max_length = 100) {
 }
 
 std::shared_ptr<GameState> IntroScreen::Run() {
+
+    // load audio file from assets
+    sf::SoundBuffer buffer;
+    buffer.loadFromFile("assets/audio/a_letter_from_hr_alt.mp3");
+    sf::Sound sound;
+    sound.setBuffer(buffer);
+    sound.play();
+
     // load the font
     sf::Font font;
     unsigned int character_size = 20u;

@@ -14,7 +14,7 @@ file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
 file(GLOB src_files CONFIGURE_DEPENDS "src/*.cpp")
 
 add_executable(${PROJECT_NAME} ${src_files})
-target_link_libraries(${PROJECT_NAME} PRIVATE sfml-graphics)
+target_link_libraries(${PROJECT_NAME} PRIVATE sfml-graphics sfml-audio sfml-system)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 if (WIN32 AND BUILD_SHARED_LIBS)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
