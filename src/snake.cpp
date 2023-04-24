@@ -3,7 +3,9 @@
 #include <cstdlib> // for rand
 
 Snake::Snake(size_t grid_width, size_t grid_height, std::shared_ptr<sf::Vector2i> food): food(food), grid_width(grid_width), grid_height(grid_height) {
-
+    if (grid_width==0 || grid_height==0){
+        return;
+    }
     sf::Vector2i head = sf::Vector2i{
         static_cast<int>(std::rand() % grid_width + 1),
         static_cast<int>(std::rand() % grid_height + 1) };
